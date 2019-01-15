@@ -1,0 +1,254 @@
+diff --git a/data/darktable.css.in b/data/darktable.css.in
+index 6f4b2431e..c0319acb2 100644
+--- a/data/darktable.css.in
++++ b/data/darktable.css.in
+@@ -379,7 +379,7 @@ entry selection {
+ scale,
+ scrollbar
+ {
+-  margin:0pt;
++  margin:5pt;
+ }
+ 
+ scale.trough.highlight,
+@@ -399,7 +399,7 @@ scrollbar.contents.trough.highlight
+ #iop-plugin-ui scrollbar slider,
+ scrollbar slider
+ {
+-    border-color: transparent;
++    border-color: shade(@selected_bg_color, 1.7);
+     background-color: @selected_bg_color;
+ }
+ 
+diff --git a/data/darktableconfig.xml.in b/data/darktableconfig.xml.in
+index 15f779435..796844070 100644
+--- a/data/darktableconfig.xml.in
++++ b/data/darktableconfig.xml.in
+@@ -1,21 +1,63 @@
+ <?xml version="1.0"?>
+ <!DOCTYPE dtconfiglist SYSTEM "darktableconfig.dtd">
+ <dtconfiglist>
+-  <dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/line_space</name>
++    <type>int</type>
++    <default>2</default>
++    <shortdescription>line spacing</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/line_height</name>
++    <type>int</type>
++    <default>11</default>
++    <shortdescription>line height</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/marker_size</name>
++    <type>float</type>
++    <default>0.3</default>
++    <shortdescription>marker size</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/label_font_size</name>
++    <type>float</type>
++    <default>0.6</default>
++    <shortdescription>label font size</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/value_font_size</name>
++    <type>float</type>
++    <default>0.6</default>
++    <shortdescription>value font size</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/delete_off_modules</name>
++    <type>bool</type>
++    <default>false</default>
++    <shortdescription>delete 'off' modules</shortdescription>
++    <longdescription>when compressing history delete 'off' modules as well</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
+     <name>bauhaus/scale</name>
+     <type>float</type>
+     <default>1.4</default>
+     <shortdescription>widget scale</shortdescription>
+     <longdescription>scaling factor for bauhaus widgets, will affect font size</longdescription>
+   </dtconfig>
+-  <dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
+     <name>database</name>
+     <type>string</type>
+     <default>library.db</default>
+     <shortdescription>database location</shortdescription>
+     <longdescription>filename relative to ~/.config/darktable or starting with a slash (needs a restart).</longdescription>
+   </dtconfig>
+-  <dtconfig prefs="gui">
++  <dtconfig prefs="gui" section="darkroom">
+     <name>panel_width</name>
+     <type>int</type>
+     <default>350</default>
+diff --git a/src/bauhaus/bauhaus.c b/src/bauhaus/bauhaus.c
+index 93ca1144b..008d86ea4 100644
+--- a/src/bauhaus/bauhaus.c
++++ b/src/bauhaus/bauhaus.c
+@@ -441,11 +441,11 @@ void dt_bauhaus_init()
+   darktable.bauhaus->popup_area = gtk_drawing_area_new();
+   gtk_widget_set_name(darktable.bauhaus->popup_area, "bauhaus-popup");
+ 
+-  darktable.bauhaus->line_space = 2;
+-  darktable.bauhaus->line_height = 11;
+-  darktable.bauhaus->marker_size = 0.3f;
+-  darktable.bauhaus->label_font_size = 0.6f;
+-  darktable.bauhaus->value_font_size = 0.6f;
++  darktable.bauhaus->line_space = dt_conf_get_int("ktx/line_space");
++  darktable.bauhaus->line_height = dt_conf_get_int("ktx/line_height");
++  darktable.bauhaus->marker_size = dt_conf_get_float("ktx/marker_size");
++  darktable.bauhaus->label_font_size = dt_conf_get_float("ktx/label_font_size");
++  darktable.bauhaus->value_font_size = dt_conf_get_float("ktx/value_font_size");
+   g_strlcpy(darktable.bauhaus->label_font, "sans", sizeof(darktable.bauhaus->label_font));
+   g_strlcpy(darktable.bauhaus->value_font, "sans", sizeof(darktable.bauhaus->value_font));
+ 
+diff --git a/src/gui/gtk.c b/src/gui/gtk.c
+index 6883a013e..e7cc68968 100644
+--- a/src/gui/gtk.c
++++ b/src/gui/gtk.c
+@@ -1183,7 +1183,7 @@ int dt_gui_gtk_init(dt_gui_gtk_t *gui)
+     [DT_GUI_COLOR_THUMBNAIL_OUTLINE] = { "thumbnail_outline_color", { 0.2, 0.2, 0.2, 1.0 } },
+     [DT_GUI_COLOR_THUMBNAIL_SELECTED_OUTLINE] = { "thumbnail_selected_outline_color", { 0.4, 0.4, 0.4, 1.0 } },
+     [DT_GUI_COLOR_THUMBNAIL_HOVER_OUTLINE] = { "thumbnail_hover_outline_color", { 0.6, 0.6, 0.6, 1.0 } },
+-    [DT_GUI_COLOR_THUMBNAIL_FONT] = { "thumbnail_font_color", { 0.425, 0.425, 0.425, 1.0 } },
++    [DT_GUI_COLOR_THUMBNAIL_FONT] = { "thumbnail_font_color", { 1.0, 1.0, 1.0, 1.0 } },
+     [DT_GUI_COLOR_THUMBNAIL_SELECTED_FONT] = { "thumbnail_selected_font_color", { 0.5, 0.5, 0.5, 1.0 } },
+     [DT_GUI_COLOR_THUMBNAIL_HOVER_FONT] = { "thumbnail_hover_font_color", { 0.7, 0.7, 0.7, 1.0 } },
+     [DT_GUI_COLOR_THUMBNAIL_BORDER] = { "thumbnail_border_color", { 0.1, 0.1, 0.1, 1.0 } },
+diff --git a/src/libs/histogram.c b/src/libs/histogram.c
+index f8d7a47e6..8f8e59b51 100644
+--- a/src/libs/histogram.c
++++ b/src/libs/histogram.c
+@@ -421,10 +421,10 @@ static gboolean _lib_histogram_draw_callback(GtkWidget *widget, cairo_t *crf, gp
+   cairo_move_to(cr, .02 * width, .98 * height - ink.height - ink.y);
+   cairo_save(cr);
+   cairo_set_line_width(cr, DT_PIXEL_APPLY_DPI(2.0));
+-  cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
++  cairo_set_source_rgba(cr, 0, 0, 0, 1);
+   pango_cairo_layout_path(cr, layout);
+   cairo_stroke_preserve(cr);
+-  cairo_set_source_rgb(cr, .25, .25, .25);
++  cairo_set_source_rgb(cr, 1, 1, 1);
+   cairo_fill(cr);
+   cairo_restore(cr);
+ 
+diff --git a/src/libs/history.c b/src/libs/history.c
+index 5c4a6f44f..8f7351fd2 100644
+--- a/src/libs/history.c
++++ b/src/libs/history.c
+@@ -45,11 +45,13 @@ typedef struct dt_lib_history_t
+   GtkWidget *create_button;
+ //   GtkWidget *apply_button;
+   GtkWidget *compress_button;
++  GtkWidget *ktx_delete_button;
+   gboolean record_undo;
+ } dt_lib_history_t;
+ 
+ /* compress history stack */
+ static void _lib_history_compress_clicked_callback(GtkWidget *widget, gpointer user_data);
++static void _lib_history_ktx_delete_clicked_callback(GtkWidget *widget, gpointer user_data);
+ static void _lib_history_button_clicked_callback(GtkWidget *widget, gpointer user_data);
+ static void _lib_history_create_style_button_clicked_callback(GtkWidget *widget, gpointer user_data);
+ /* signal callback for history change */
+@@ -110,11 +112,16 @@ void gui_init(dt_lib_module_t *self)
+ 
+   GtkWidget *hhbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DT_PIXEL_APPLY_DPI(5));
+ 
+-  d->compress_button = gtk_button_new_with_label(_("compress history stack"));
++  d->compress_button = gtk_button_new_with_label(_("compress stack"));
+   gtk_label_set_xalign (GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->compress_button))), 0.0f);
+   gtk_widget_set_tooltip_text(d->compress_button, _("create a minimal history stack which produces the same image"));
+   g_signal_connect(G_OBJECT(d->compress_button), "clicked", G_CALLBACK(_lib_history_compress_clicked_callback), NULL);
+ 
++  d->ktx_delete_button = gtk_button_new_with_label(_("delete stack"));
++  gtk_label_set_xalign (GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->ktx_delete_button))), 0.0f);
++  gtk_widget_set_tooltip_text(d->ktx_delete_button, _("delete history stack"));
++  g_signal_connect(G_OBJECT(d->ktx_delete_button), "clicked", G_CALLBACK(_lib_history_ktx_delete_clicked_callback), NULL);
++
+   /* add toolbar button for creating style */
+   d->create_button = dtgtk_button_new(dtgtk_cairo_paint_styles, CPF_DO_NOT_USE_BORDER, NULL);
+   gtk_widget_set_size_request(d->create_button, DT_PIXEL_APPLY_DPI(24), -1);
+@@ -124,6 +131,7 @@ void gui_init(dt_lib_module_t *self)
+ 
+   /* add buttons to buttonbox */
+   gtk_box_pack_start(GTK_BOX(hhbox), d->compress_button, TRUE, TRUE, 0);
++  gtk_box_pack_start(GTK_BOX(hhbox), d->ktx_delete_button, TRUE, TRUE, 0);
+   gtk_box_pack_start(GTK_BOX(hhbox), d->create_button, FALSE, FALSE, 0);
+ 
+   /* add history list and buttonbox to widget */
+@@ -740,6 +748,16 @@ static void _lib_history_compress_clicked_callback(GtkWidget *widget, gpointer u
+   sqlite3_step(stmt);
+   sqlite3_finalize(stmt);
+ 
++  if(dt_conf_get_bool("ktx/delete_off_modules"))
++  {
++    // remove disabled modules
++    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "DELETE FROM main.history WHERE imgid = ?1 AND "
++                                                               "enabled = 0", -1, &stmt, NULL);
++    DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++    sqlite3_step(stmt);
++    sqlite3_finalize(stmt);
++  }
++
+   // load new history and write it back to ensure that all history are properly numbered without a gap
+   dt_dev_reload_history_items(darktable.develop);
+   dt_dev_write_history(darktable.develop);
+@@ -766,6 +784,25 @@ static void _lib_history_compress_clicked_callback(GtkWidget *widget, gpointer u
+   dt_dev_modulegroups_set(darktable.develop, dt_dev_modulegroups_get(darktable.develop));
+ }
+ 
++static void _lib_history_ktx_delete_clicked_callback(GtkWidget *widget, gpointer user_data)
++{
++  const int imgid = darktable.develop->image_storage.id;
++  if(!imgid) return;
++  // make sure the right history is in there:
++  dt_dev_write_history(darktable.develop);
++  sqlite3_stmt *stmt;
++
++  // remove all modules
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "DELETE FROM main.history WHERE imgid = ?1", -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++  sqlite3_step(stmt);
++  sqlite3_finalize(stmt);
++
++  // load new history and write it back to ensure that all history are properly numbered without a gap
++  dt_dev_reload_history_items(darktable.develop);
++  dt_dev_write_history(darktable.develop);
++}
++
+ static void _lib_history_button_clicked_callback(GtkWidget *widget, gpointer user_data)
+ {
+   static int reset = 0;
+diff --git a/src/views/view.c b/src/views/view.c
+index e3cfcce59..56b643ac0 100644
+--- a/src/views/view.c
++++ b/src/views/view.c
+@@ -1231,7 +1231,8 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+ 
+       if(img)
+       {
+-        if (zoom != 1 && (!darktable.gui->show_overlays || imgsel == imgid) && extended_thumb_overlay)
++//        if (zoom != 1 && (!darktable.gui->show_overlays || imgsel == imgid) && extended_thumb_overlay)
++        if (zoom != 1)
+         {
+           const double overlay_height = 0.26 * height;
+           const int exif_offset = DT_PIXEL_APPLY_DPI(3);
+@@ -1273,7 +1274,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+           layout = pango_cairo_create_layout(cr);
+           pango_font_description_set_absolute_size(desc, fontsize * PANGO_SCALE);
+           pango_layout_set_font_description(layout, desc);
+-          dt_gui_gtk_set_source_rgb(cr, outlinecol);
++          dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_THUMBNAIL_BORDER);
+ 
+           cairo_move_to(cr, x0 + exif_offset, y0 + exif_offset);
+           pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_MIDDLE);
