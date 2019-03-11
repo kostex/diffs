@@ -1,0 +1,660 @@
+diff --git a/data/darktable.css.in b/data/darktable.css.in
+index 6f4b2431e..7a0402cf1 100644
+--- a/data/darktable.css.in
++++ b/data/darktable.css.in
+@@ -21,16 +21,18 @@
+ @define-color bauhaus_fg_insensitive alpha(@bauhaus_fg, 0.5);
+ 
+ @define-color thumbnail_bg_color #666666; /* area between border and outline */
+-@define-color thumbnail_selected_bg_color #999999;
+-@define-color thumbnail_hover_bg_color #cccccc;
+-@define-color thumbnail_outline_color #333333; /* square around image+metadata */
+-@define-color thumbnail_selected_outline_color #666666;
+-@define-color thumbnail_hover_outline_color #999999;
+-@define-color thumbnail_font_color #6c6c6c;
+-@define-color thumbnail_selected_font_color #7f7f7f;
++@define-color thumbnail_selected_bg_color #88bb00;
++@define-color thumbnail_hover_bg_color #ffd633;
++@define-color thumbnail_outline_color #fffae6; /* square around image+metadata */
++@define-color thumbnail_selected_outline_color #88bb00;
++@define-color thumbnail_hover_outline_color #fffae6;
++@define-color thumbnail_font_color #666666;
++@define-color thumbnail_selected_font_color #ff0000;
+ @define-color thumbnail_hover_font_color #b2b2b2;
+ @define-color thumbnail_border_color #191919; /* rectangle directly around image */
+-@define-color thumbnail_selected_border_color #e5e5e5;
++@define-color thumbnail_selected_border_color #ffffae;
++@define-color ktx_1_color #1a1400;
++
+ 
+ @define-color filmstrip_bg_color @lighttable_bg_color;
+ 
+@@ -379,7 +381,7 @@ entry selection {
+ scale,
+ scrollbar
+ {
+-  margin:0pt;
++  margin:5pt;
+ }
+ 
+ scale.trough.highlight,
+@@ -399,7 +401,7 @@ scrollbar.contents.trough.highlight
+ #iop-plugin-ui scrollbar slider,
+ scrollbar slider
+ {
+-    border-color: transparent;
++    border-color: shade(@selected_bg_color, 1.7);
+     background-color: @selected_bg_color;
+ }
+ 
+diff --git a/data/darktableconfig.xml.in b/data/darktableconfig.xml.in
+index f58e7701c..832dc8b81 100644
+--- a/data/darktableconfig.xml.in
++++ b/data/darktableconfig.xml.in
+@@ -1,21 +1,63 @@
+ <?xml version="1.0"?>
+ <!DOCTYPE dtconfiglist SYSTEM "darktableconfig.dtd">
+ <dtconfiglist>
+-  <dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/line_space</name>
++    <type>int</type>
++    <default>2</default>
++    <shortdescription>line spacing</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/line_height</name>
++    <type>int</type>
++    <default>11</default>
++    <shortdescription>line height</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/marker_size</name>
++    <type>float</type>
++    <default>0.3</default>
++    <shortdescription>marker size</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/label_font_size</name>
++    <type>float</type>
++    <default>0.6</default>
++    <shortdescription>label font size</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/value_font_size</name>
++    <type>float</type>
++    <default>0.6</default>
++    <shortdescription>value font size</shortdescription>
++    <longdescription>n.a.</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
++    <name>ktx/delete_off_modules</name>
++    <type>bool</type>
++    <default>false</default>
++    <shortdescription>delete 'off' modules</shortdescription>
++    <longdescription>when compressing history delete 'off' modules as well</longdescription>
++  </dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
+     <name>bauhaus/scale</name>
+     <type>float</type>
+     <default>1.4</default>
+     <shortdescription>widget scale</shortdescription>
+     <longdescription>scaling factor for bauhaus widgets, will affect font size</longdescription>
+   </dtconfig>
+-  <dtconfig>
++  <dtconfig prefs="gui" section="darkroom">
+     <name>database</name>
+     <type>string</type>
+     <default>library.db</default>
+     <shortdescription>database location</shortdescription>
+     <longdescription>filename relative to ~/.config/darktable or starting with a slash (needs a restart).</longdescription>
+   </dtconfig>
+-  <dtconfig prefs="gui">
++  <dtconfig prefs="gui" section="darkroom">
+     <name>panel_width</name>
+     <type>int</type>
+     <default>350</default>
+@@ -605,6 +647,13 @@
+     <shortdescription>enable extended thumb overlay</shortdescription>
+     <longdescription>if set to true, thumb overlay shows filename and some exif data.</longdescription>
+   </dtconfig>
++  <dtconfig prefs="gui" section="lighttable">
++    <name>ktx/show_exif_on_all_thumbs</name>
++    <type>bool</type>
++    <default>false</default>
++    <shortdescription>show exif overlay on all thumbnails</shortdescription>
++    <longdescription>when enabling 'extended thumb overlay', show them on all thumbs, not only the selected one</longdescription>
++  </dtconfig>
+   <dtconfig prefs="gui" section="darkroom">
+     <name>pressure_sensitivity</name>
+     <type>
+diff --git a/src/bauhaus/bauhaus.c b/src/bauhaus/bauhaus.c
+index 5b3aa9672..85cdeff1a 100644
+--- a/src/bauhaus/bauhaus.c
++++ b/src/bauhaus/bauhaus.c
+@@ -441,11 +441,11 @@ void dt_bauhaus_init()
+   darktable.bauhaus->popup_area = gtk_drawing_area_new();
+   gtk_widget_set_name(darktable.bauhaus->popup_area, "bauhaus-popup");
+ 
+-  darktable.bauhaus->line_space = 2;
+-  darktable.bauhaus->line_height = 11;
+-  darktable.bauhaus->marker_size = 0.3f;
+-  darktable.bauhaus->label_font_size = 0.6f;
+-  darktable.bauhaus->value_font_size = 0.6f;
++  darktable.bauhaus->line_space = dt_conf_get_int("ktx/line_space");
++  darktable.bauhaus->line_height = dt_conf_get_int("ktx/line_height");
++  darktable.bauhaus->marker_size = dt_conf_get_float("ktx/marker_size");
++  darktable.bauhaus->label_font_size = dt_conf_get_float("ktx/label_font_size");
++  darktable.bauhaus->value_font_size = dt_conf_get_float("ktx/value_font_size");
+   g_strlcpy(darktable.bauhaus->label_font, "sans", sizeof(darktable.bauhaus->label_font));
+   g_strlcpy(darktable.bauhaus->value_font, "sans", sizeof(darktable.bauhaus->value_font));
+ 
+diff --git a/src/common/mipmap_cache.c b/src/common/mipmap_cache.c
+index 16556e802..f76f946ac 100644
+--- a/src/common/mipmap_cache.c
++++ b/src/common/mipmap_cache.c
+@@ -116,11 +116,17 @@ static inline void dead_image_8(dt_mipmap_buffer_t *buf)
+   dsc->iscale = 1.0f;
+   dsc->color_space = DT_COLORSPACE_DISPLAY;
+   assert(dsc->size > 64 * sizeof(uint32_t));
+-  const uint32_t X = 0xffffffffu;
++  const uint32_t X = 0x33000040u;
+   const uint32_t o = 0u;
+   const uint32_t image[]
+-      = { o, o, o, o, o, o, o, o, o, o, X, X, X, X, o, o, o, X, o, X, X, o, X, o, o, X, X, X, X, X, X, o,
+-          o, o, X, o, o, X, o, o, o, o, o, o, o, o, o, o, o, o, X, X, X, X, o, o, o, o, o, o, o, o, o, o };
++      = { o, o, o, o, o, o, o, o,
++          o, X, o, o, o, o, X, o,
++          o, o, X, o, o, X, o, o,
++          o, o, o, X, X, o, o, o,
++          o, o, o, X, X, o, o, o,
++          o, o, X, o, o, X, o, o,
++          o, X, o, o, o, o, X, o,
++          o, o, o, o, o, o, o, o };
+   memcpy(buf->buf, image, sizeof(uint32_t) * 64);
+ }
+ 
+diff --git a/src/dtgtk/paint.c b/src/dtgtk/paint.c
+index cc90a1568..be52c6764 100644
+--- a/src/dtgtk/paint.c
++++ b/src/dtgtk/paint.c
+@@ -1854,6 +1854,23 @@ void dtgtk_cairo_paint_modulegroup_effect(cairo_t *cr, gint x, gint y, gint w, g
+   cairo_stroke(cr);
+ }
+ 
++void dtgtk_cairo_paint_modulegroup_all(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags, void *data)
++{
++  gint s = w < h ? w : h;
++  cairo_translate(cr, x + (w / 2.) - (s / 2.), y + (h / 2.) - (s / 2.));
++  cairo_scale(cr, s, s);
++  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
++  cairo_set_line_width(cr, 0.1);
++
++  
++  cairo_move_to(cr, 0.2, 0.8);
++  cairo_line_to(cr, 0.5, 0.2);
++  cairo_line_to(cr, 0.8, 0.8);
++  cairo_move_to(cr, 0.3, 0.6);
++  cairo_line_to(cr, 0.7, 0.6);
++  cairo_stroke(cr);
++}
++
+ void dtgtk_cairo_paint_map_pin(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags, void *data)
+ {
+   gint s = w < h ? w : h;
+diff --git a/src/dtgtk/paint.h b/src/dtgtk/paint.h
+index ea080ce18..3add8969a 100644
+--- a/src/dtgtk/paint.h
++++ b/src/dtgtk/paint.h
+@@ -158,6 +158,8 @@ void dtgtk_cairo_paint_modulegroup_color(cairo_t *cr, gint x, gint y, gint w, gi
+ void dtgtk_cairo_paint_modulegroup_correct(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags, void *data);
+ /** paint effect modulegroup icon */
+ void dtgtk_cairo_paint_modulegroup_effect(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags, void *data);
++/** paint all modulegroup icon */
++void dtgtk_cairo_paint_modulegroup_all(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags, void *data);
+ 
+ /** paint the pin for map thumbnails */
+ void dtgtk_cairo_paint_map_pin(cairo_t *cr, gint x, gint y, gint w, gint h, gint flags, void *data);
+diff --git a/src/gui/gtk.c b/src/gui/gtk.c
+index d3f9e9cfe..93b59f37f 100644
+--- a/src/gui/gtk.c
++++ b/src/gui/gtk.c
+@@ -2078,6 +2078,7 @@ void dt_gui_load_theme(const char *theme)
+     [DT_GUI_COLOR_THUMBNAIL_BORDER] = { "thumbnail_border_color", { 0.1, 0.1, 0.1, 1.0 } },
+     [DT_GUI_COLOR_THUMBNAIL_SELECTED_BORDER] = { "thumbnail_selected_border_color", { 0.9, 0.9, 0.9, 1.0 } },
+     [DT_GUI_COLOR_FILMSTRIP_BG] = { "filmstrip_bg_color", { 0.2, 0.2, 0.2, 1.0 } },
++    [DT_GUI_COLOR_KTX_1] = { "ktx_1_color", { 0.0, 0.0, 0.0, 1.0 } }
+   };
+ 
+   // starting from 1 as DT_GUI_COLOR_BG is not part of this table
+diff --git a/src/gui/gtk.h b/src/gui/gtk.h
+index 9ad201354..b19f96220 100644
+--- a/src/gui/gtk.h
++++ b/src/gui/gtk.h
+@@ -74,6 +74,7 @@ typedef enum dt_gui_color_t
+   DT_GUI_COLOR_THUMBNAIL_BORDER,
+   DT_GUI_COLOR_THUMBNAIL_SELECTED_BORDER,
+   DT_GUI_COLOR_FILMSTRIP_BG,
++  DT_GUI_COLOR_KTX_1,
+   DT_GUI_COLOR_LAST
+ } dt_gui_color_t;
+ 
+diff --git a/src/libs/histogram.c b/src/libs/histogram.c
+index f8d7a47e6..8f8e59b51 100644
+--- a/src/libs/histogram.c
++++ b/src/libs/histogram.c
+@@ -421,10 +421,10 @@ static gboolean _lib_histogram_draw_callback(GtkWidget *widget, cairo_t *crf, gp
+   cairo_move_to(cr, .02 * width, .98 * height - ink.height - ink.y);
+   cairo_save(cr);
+   cairo_set_line_width(cr, DT_PIXEL_APPLY_DPI(2.0));
+-  cairo_set_source_rgba(cr, 1, 1, 1, 0.3);
++  cairo_set_source_rgba(cr, 0, 0, 0, 1);
+   pango_cairo_layout_path(cr, layout);
+   cairo_stroke_preserve(cr);
+-  cairo_set_source_rgb(cr, .25, .25, .25);
++  cairo_set_source_rgb(cr, 1, 1, 1);
+   cairo_fill(cr);
+   cairo_restore(cr);
+ 
+diff --git a/src/libs/history.c b/src/libs/history.c
+index 3fefd41f4..fa08f5b9e 100644
+--- a/src/libs/history.c
++++ b/src/libs/history.c
+@@ -46,11 +46,15 @@ typedef struct dt_lib_history_t
+   GtkWidget *create_button;
+ //   GtkWidget *apply_button;
+   GtkWidget *compress_button;
++  GtkWidget *ktx_delete_button;
++  GtkWidget *ktx_deletesel_button;
+   gboolean record_undo;
+ } dt_lib_history_t;
+ 
+ /* compress history stack */
+ static void _lib_history_compress_clicked_callback(GtkWidget *widget, gpointer user_data);
++static void _lib_history_ktx_delete_clicked_callback(GtkWidget *widget, gpointer user_data);
++static void _lib_history_ktx_deletesel_clicked_callback(GtkWidget *widget, gpointer user_data);
+ static void _lib_history_button_clicked_callback(GtkWidget *widget, gpointer user_data);
+ static void _lib_history_create_style_button_clicked_callback(GtkWidget *widget, gpointer user_data);
+ /* signal callback for history change */
+@@ -109,11 +113,21 @@ void gui_init(dt_lib_module_t *self)
+ 
+   GtkWidget *hhbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DT_PIXEL_APPLY_DPI(5));
+ 
+-  d->compress_button = gtk_button_new_with_label(_("compress history stack"));
++  d->compress_button = gtk_button_new_with_label(_("compress stack"));
+   gtk_label_set_xalign (GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->compress_button))), 0.0f);
+   gtk_widget_set_tooltip_text(d->compress_button, _("create a minimal history stack which produces the same image"));
+   g_signal_connect(G_OBJECT(d->compress_button), "clicked", G_CALLBACK(_lib_history_compress_clicked_callback), NULL);
+ 
++  d->ktx_deletesel_button = gtk_button_new_with_label(_("delete selected"));
++  gtk_label_set_xalign (GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->ktx_deletesel_button))), 0.0f);
++  gtk_widget_set_tooltip_text(d->ktx_deletesel_button, _("delete selected module"));
++  g_signal_connect(G_OBJECT(d->ktx_deletesel_button), "clicked", G_CALLBACK(_lib_history_ktx_deletesel_clicked_callback), NULL);
++
++  d->ktx_delete_button = gtk_button_new_with_label(_("delete stack"));
++  gtk_label_set_xalign (GTK_LABEL(gtk_bin_get_child(GTK_BIN(d->ktx_delete_button))), 0.0f);
++  gtk_widget_set_tooltip_text(d->ktx_delete_button, _("delete history stack"));
++  g_signal_connect(G_OBJECT(d->ktx_delete_button), "clicked", G_CALLBACK(_lib_history_ktx_delete_clicked_callback), NULL);
++
+   /* add toolbar button for creating style */
+   d->create_button = dtgtk_button_new(dtgtk_cairo_paint_styles, CPF_DO_NOT_USE_BORDER, NULL);
+   gtk_widget_set_size_request(d->create_button, DT_PIXEL_APPLY_DPI(24), -1);
+@@ -123,6 +137,8 @@ void gui_init(dt_lib_module_t *self)
+ 
+   /* add buttons to buttonbox */
+   gtk_box_pack_start(GTK_BOX(hhbox), d->compress_button, TRUE, TRUE, 0);
++  gtk_box_pack_start(GTK_BOX(hhbox), d->ktx_delete_button, TRUE, TRUE, 0);
++  gtk_box_pack_start(GTK_BOX(hhbox), d->ktx_deletesel_button, TRUE, TRUE, 0);
+   gtk_box_pack_start(GTK_BOX(hhbox), d->create_button, FALSE, FALSE, 0);
+ 
+   /* add history list and buttonbox to widget */
+@@ -713,6 +729,16 @@ static void _lib_history_compress_clicked_callback(GtkWidget *widget, gpointer u
+   sqlite3_step(stmt);
+   sqlite3_finalize(stmt);
+ 
++  if(dt_conf_get_bool("ktx/delete_off_modules"))
++  {
++    // remove disabled modules
++    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "DELETE FROM main.history WHERE imgid = ?1 AND "
++                                                               "enabled = 0", -1, &stmt, NULL);
++    DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++    sqlite3_step(stmt);
++    sqlite3_finalize(stmt);
++  }
++
+   // delete all mask_manager entries
+   int masks_count = 0;
+   char op_mask_manager[20] = {0};
+@@ -806,6 +832,87 @@ static void _lib_history_compress_clicked_callback(GtkWidget *widget, gpointer u
+   dt_dev_modulegroups_set(darktable.develop, dt_dev_modulegroups_get(darktable.develop));
+ }
+ 
++static void _lib_history_ktx_delete_clicked_callback(GtkWidget *widget, gpointer user_data)
++{
++  const int imgid = darktable.develop->image_storage.id;
++  if(!imgid) return;
++  // make sure the right history is in there:
++  dt_dev_write_history(darktable.develop);
++  sqlite3_stmt *stmt;
++
++  // remove all modules
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "DELETE FROM main.history WHERE imgid = ?1", -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++  sqlite3_step(stmt);
++  sqlite3_finalize(stmt);
++
++  // load new history and write it back to ensure that all history are properly numbered without a gap
++  dt_dev_reload_history_items(darktable.develop);
++  dt_dev_write_history(darktable.develop);
++
++  // then we can get the item to select in the new clean-up history retrieve the position of the module
++  // corresponding to the history end.
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "SELECT IFNULL(MAX(num)+1, 0) FROM main.history "
++                                                             "WHERE imgid=?1", -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++
++  if (sqlite3_step(stmt) == SQLITE_ROW)
++    darktable.develop->history_end = sqlite3_column_int(stmt, 0);
++  sqlite3_finalize(stmt);
++
++  // select the new history end corresponding to the one before the history compression
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "UPDATE main.images SET history_end=?2 WHERE id=?1",
++                              -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, darktable.develop->history_end);
++  sqlite3_step(stmt);
++  sqlite3_finalize(stmt);
++
++  dt_dev_reload_history_items(darktable.develop);
++  dt_dev_modulegroups_set(darktable.develop, dt_dev_modulegroups_get(darktable.develop));
++}
++
++static void _lib_history_ktx_deletesel_clicked_callback(GtkWidget *widget, gpointer user_data)
++{
++  const int imgid = darktable.develop->image_storage.id;
++  if(!imgid) return;
++  // make sure the right history is in there:
++  dt_dev_write_history(darktable.develop);
++  sqlite3_stmt *stmt;
++
++  // remove all modules
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "DELETE FROM main.history WHERE imgid = ?1 AND num = ?2", -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, darktable.develop->history_end - 1);
++  sqlite3_step(stmt);
++  sqlite3_finalize(stmt);
++
++  // load new history and write it back to ensure that all history are properly numbered without a gap
++  dt_dev_reload_history_items(darktable.develop);
++  dt_dev_write_history(darktable.develop);
++
++  // then we can get the item to select in the new clean-up history retrieve the position of the module
++  // corresponding to the history end.
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "SELECT IFNULL(MAX(num)+1, 0) FROM main.history "
++                                                             "WHERE imgid=?1", -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++
++  if (sqlite3_step(stmt) == SQLITE_ROW)
++    darktable.develop->history_end = sqlite3_column_int(stmt, 0);
++  sqlite3_finalize(stmt);
++
++  // select the new history end corresponding to the one before the history compression
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "UPDATE main.images SET history_end=?2 WHERE id=?1",
++                              -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, darktable.develop->history_end);
++  sqlite3_step(stmt);
++  sqlite3_finalize(stmt);
++
++  dt_dev_reload_history_items(darktable.develop);
++  dt_dev_modulegroups_set(darktable.develop, dt_dev_modulegroups_get(darktable.develop));
++}
++
+ static void _lib_history_button_clicked_callback(GtkWidget *widget, gpointer user_data)
+ {
+   static int reset = 0;
+diff --git a/src/libs/modulegroups.c b/src/libs/modulegroups.c
+index 8cf6ff6e1..3710b20a0 100644
+--- a/src/libs/modulegroups.c
++++ b/src/libs/modulegroups.c
+@@ -168,6 +168,12 @@ void gui_init(dt_lib_module_t *self)
+   g_signal_connect(d->buttons[g_index], "toggled", G_CALLBACK(_lib_modulegroups_toggle), self);
+   gtk_widget_set_tooltip_text(d->buttons[g_index], _("effects group"));
+ 
++  /* all */
++  d->buttons[DT_MODULEGROUP_ALL] = dtgtk_togglebutton_new(dtgtk_cairo_paint_modulegroup_all, pf, NULL);
++  g_signal_connect(d->buttons[DT_MODULEGROUP_ALL], "toggled", G_CALLBACK(_lib_modulegroups_toggle),
++                   self);
++  gtk_widget_set_tooltip_text(d->buttons[DT_MODULEGROUP_ALL], _("all enabled modules"));
++
+   /* minimize table height before adding the buttons */
+   gtk_widget_set_size_request(self->widget, -1, -1);
+ 
+@@ -234,6 +240,8 @@ static gboolean _lib_modulegroups_test_internal(dt_lib_module_t *self, uint32_t
+     return TRUE;
+   else if(iop_group & IOP_GROUP_EFFECT && group == DT_MODULEGROUP_EFFECT)
+     return TRUE;
++  else if(iop_group & IOP_GROUP_ALL && group == DT_MODULEGROUP_ALL)
++    return TRUE;
+   return FALSE;
+ }
+ 
+diff --git a/src/libs/modulegroups.h b/src/libs/modulegroups.h
+index 5c3052f3a..8975baf04 100644
+--- a/src/libs/modulegroups.h
++++ b/src/libs/modulegroups.h
+@@ -31,6 +31,7 @@ typedef enum dt_lib_modulegroup_t
+   DT_MODULEGROUP_COLOR,
+   DT_MODULEGROUP_CORRECT,
+   DT_MODULEGROUP_EFFECT,
++  DT_MODULEGROUP_ALL,
+ 
+   /* don't touch the following */
+   DT_MODULEGROUP_SIZE,
+diff --git a/src/views/view.c b/src/views/view.c
+index 1ffb11c95..2a8f0705f 100644
+--- a/src/views/view.c
++++ b/src/views/view.c
+@@ -884,8 +884,8 @@ int dt_view_process_image_over(dt_view_image_over_t what, int active, cairo_t *c
+   float r1, r2;
+   if(zoom != 1)
+   {
+-    r1 = 0.05 * width;
+-    r2 = 0.022 * width;
++    r1 = 0.05 * width * 0.7;
++    r2 = 0.022 * width * 0.7;
+   }
+   else
+   {
+@@ -910,7 +910,7 @@ int dt_view_process_image_over(dt_view_image_over_t what, int active, cairo_t *c
+     case DT_VIEW_STAR_4:
+     case DT_VIEW_STAR_5:
+       if(zoom != 1)
+-        x = (0.26 + (what - DT_VIEW_STAR_1) * 0.12) * width;
++        x = (0.26 + (what - DT_VIEW_STAR_1) * 0.12) * width * 0.7;
+       else
+         x = (.08 + (what - DT_VIEW_STAR_1) * 0.04) * fscale;
+ 
+@@ -1173,53 +1173,27 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+     dt_gui_gtk_set_source_rgb(cr, outlinecol);
+     cairo_stroke(cr);
+ 
+-    if(img)
++/*    if(img)
+     {
+       PangoLayout *layout;
+-      PangoRectangle ink;
++      const int exif_offset = DT_PIXEL_APPLY_DPI(3);
++      layout = pango_cairo_create_layout(cr);
+       PangoFontDescription *desc = pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
+       pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
+-      const int fontsize = 0.20 * width;
++      const int fontsize = 0.07 * width;
+       pango_font_description_set_absolute_size(desc, fontsize * PANGO_SCALE);
+-      layout = pango_cairo_create_layout(cr);
+       pango_layout_set_font_description(layout, desc);
+-      const char *ext = img->filename + strlen(img->filename);
+-      while(ext > img->filename && *ext != '.') ext--;
+-      ext++;
+-      dt_gui_gtk_set_source_rgb(cr, fontcol);
+-
+-      char* upcase_ext = g_ascii_strup(ext, -1);  // extension in capital letters to avoid character descenders
++      dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_THUMBNAIL_BORDER);
+ 
+-      if (buf.height > buf.width)
+-      {
+-        int max_chr_width = 0;
+-        for (int i = 0; upcase_ext[i] != 0; i++)
+-        {
+-          pango_layout_set_text(layout, &upcase_ext[i], 1);
+-          pango_layout_get_pixel_extents(layout, &ink, NULL);
+-          max_chr_width = MAX(max_chr_width, ink.width);
+-        }
++      cairo_move_to(cr, x0 + exif_offset, y0 + exif_offset);
++      pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_MIDDLE);
++      pango_layout_set_width(layout, (int)(PANGO_SCALE * (width - 2 * exif_offset)));
++      pango_layout_set_text(layout, img->filename, -1);
++      pango_cairo_show_layout(cr, layout);
+ 
+-        for (int i = 0, yoffs = fontsize;  upcase_ext[i] != 0; i++,  yoffs -= fontsize)
+-        {
+-          pango_layout_set_text(layout, &upcase_ext[i], 1);
+-          pango_layout_get_pixel_extents(layout, &ink, NULL);
+-          cairo_move_to(cr, .025 * width - ink.x + (max_chr_width - ink.width) / 2, .2 * height - yoffs);
+-          pango_cairo_show_layout(cr, layout);
+-        }
+-      }
+-      else
+-      {
+-        pango_layout_set_text(layout, upcase_ext, -1);
+-        pango_layout_get_pixel_extents(layout, &ink, NULL);
+-        cairo_move_to(cr, .025 * width - ink.x, .2 * height - fontsize);
+-        pango_cairo_show_layout(cr, layout);
+-      }
+-      g_free(upcase_ext);
+       pango_font_description_free(desc);
+       g_object_unref(layout);
+-
+-    }
++    } */
+   }
+ 
+   // if we got a different mip than requested, and it's not a skull (8x8 px), we count
+@@ -1307,7 +1281,10 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+         scale = fminf((width - 2 * tb) / (float)buf.width, (height - 2 * tb) / (float)buf.height);
+       }
+       else
+-        scale = fminf(width * imgwd / (float)buf.width, height * imgwd / (float)buf.height);
++        if (buf.height < buf.width)
++          scale = fminf(width * imgwd / (float)buf.width, height * imgwd / (float)buf.height);
++        else
++          scale = fminf(width * imgwd / (float)buf.width, height * imgwd / (float)buf.height) / 1.5;
+     }
+ 
+     // draw centered and fitted:
+@@ -1316,7 +1293,10 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+     if (image_only) // in this case we want to display the picture exactly at (px, py)
+       cairo_translate(cr, px, py);
+     else
+-      cairo_translate(cr, width / 2.0, height / 2.0);
++      if (zoom == 1)
++        cairo_translate(cr, width / 2.0, height / 2.0);
++      else
++        cairo_translate(cr, width / 2.0, height / 3.0);
+ 
+     cairo_scale(cr, scale, scale);
+ 
+@@ -1403,15 +1383,15 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+       cairo_set_line_width(cr, DT_PIXEL_APPLY_DPI(1.5));
+       dt_gui_gtk_set_source_rgb(cr, outlinecol);
+       cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+-
++      const gboolean ktx_show_on_all = dt_conf_get_bool("ktx/show_exif_on_all_thumbs");
+       const gboolean extended_thumb_overlay = dt_conf_get_bool("plugins/lighttable/extended_thumb_overlay");
+       const gboolean image_is_rejected = (img && ((img->flags & 0x7) == 6));
+ 
+       if(img)
+       {
+-        if (zoom != 1 && (!darktable.gui->show_overlays || imgsel == imgid) && extended_thumb_overlay)
++        if (zoom != 1 && extended_thumb_overlay && ((!darktable.gui->show_overlays || imgsel == imgid) || ktx_show_on_all))
+         {
+-          const double overlay_height = 0.26 * height;
++          const double overlay_height = 0.33 * height;
+           const int exif_offset = DT_PIXEL_APPLY_DPI(3);
+           const int fontsize = 0.18 * overlay_height;
+           const double line_offs = 1.15 * fontsize;
+@@ -1438,7 +1418,7 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+           cairo_line_to(cr, x0 + radius, y1);
+           cairo_curve_to(cr, x0 + off1, y1, x0, y1 - off1, x0, y1 - radius);
+           cairo_close_path(cr);
+-          dt_gui_gtk_set_source_rgb(cr, bgcol);
++          dt_gui_gtk_set_source_rgba(cr, DT_GUI_COLOR_KTX_1, 1.0);
+           cairo_fill_preserve(cr);
+           cairo_set_line_width(cr, 0.005 * width);
+           dt_gui_gtk_set_source_rgb(cr, outlinecol);
+@@ -1447,19 +1427,26 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+           // some exif data
+           PangoLayout *layout;
+           PangoFontDescription *desc = pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
+-          pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
++          pango_font_description_set_weight(desc, PANGO_WEIGHT_SEMIBOLD);
+           layout = pango_cairo_create_layout(cr);
+           pango_font_description_set_absolute_size(desc, fontsize * PANGO_SCALE);
+           pango_layout_set_font_description(layout, desc);
+-          dt_gui_gtk_set_source_rgb(cr, outlinecol);
++          dt_gui_gtk_set_source_rgb(cr, DT_GUI_COLOR_THUMBNAIL_FONT);
+ 
+           cairo_move_to(cr, x0 + exif_offset, y0 + exif_offset);
+           pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_MIDDLE);
+           pango_layout_set_width(layout, (int)(PANGO_SCALE * (width - 2 * exif_offset)));
+           pango_layout_set_text(layout, img->filename, -1);
+           pango_cairo_show_layout(cr, layout);
+-          char exifline[50];
++
+           cairo_move_to(cr, x0 + exif_offset, y0 + exif_offset + line_offs);
++          pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_MIDDLE);
++          pango_layout_set_width(layout, (int)(PANGO_SCALE * (width - 2 * exif_offset)));
++          pango_layout_set_text(layout, img->exif_datetime_taken, -1);
++          pango_cairo_show_layout(cr, layout);
++
++          char exifline[50];
++          cairo_move_to(cr, x0 + exif_offset, y0 + exif_offset + line_offs*2);
+           dt_image_print_exif(img, exifline, sizeof(exifline));
+           pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
+           pango_layout_set_text(layout, exifline, -1);
+@@ -1653,23 +1640,26 @@ int dt_view_image_expose(dt_view_image_over_t *image_over, uint32_t imgid, cairo
+     PangoFontDescription *desc = pango_font_description_copy_static(darktable.bauhaus->pango_font_desc);
+     pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
+     layout = pango_cairo_create_layout(cr);
+-    const int fontsize = 0.025 * fscale;
++    const int fontsize = 0.015 * fscale;
+     pango_font_description_set_absolute_size(desc, fontsize * PANGO_SCALE);
+     pango_layout_set_font_description(layout, desc);
+     cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+     cairo_set_line_width(cr, DT_PIXEL_APPLY_DPI(2.0));
+-    cairo_set_source_rgb(cr, 0.3, 0.3, 0.3);
++    cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+ 
+-    cairo_move_to(cr, .02 * fscale, .04 * fscale - fontsize);
++    cairo_move_to(cr, .02 * fscale, .02 * fscale - fontsize);
+     pango_layout_set_text(layout, img->filename, -1);
+     pango_cairo_layout_path(cr, layout);
++    cairo_move_to(cr, .02 * fscale, .04 * fscale - fontsize);
++    pango_layout_set_text(layout, img->exif_datetime_taken, -1);
++    pango_cairo_layout_path(cr, layout);
+     char exifline[50];
+-    cairo_move_to(cr, .02 * fscale, .08 * fscale - fontsize);
++    cairo_move_to(cr, .02 * fscale, .06 * fscale - fontsize);
+     dt_image_print_exif(img, exifline, sizeof(exifline));
+     pango_layout_set_text(layout, exifline, -1);
+     pango_cairo_layout_path(cr, layout);
+     cairo_stroke_preserve(cr);
+-    cairo_set_source_rgb(cr, .7, .7, .7);
++    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+     cairo_fill(cr);
+     pango_font_description_free(desc);
+     g_object_unref(layout);
