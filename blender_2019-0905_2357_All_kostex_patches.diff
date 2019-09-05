@@ -1,0 +1,944 @@
+diff --git a/build_files/build_environment/BUILD_NOTES.txt b/build_files/build_environment/BUILD_NOTES.txt
+new file mode 100644
+index 00000000000..24f45f6bc3f
+--- /dev/null
++++ b/build_files/build_environment/BUILD_NOTES.txt
+@@ -0,0 +1,39 @@
++
++
++Ran with:
++    install_deps.sh --with-all
++
++
++If you're using CMake add this to your configuration flags:
++  -D WITH_CODEC_SNDFILE=ON
++  -D PYTHON_VERSION=3.7
++  -D WITH_OPENCOLORIO=ON
++  -D OPENCOLORIO_ROOT_DIR=/opt/lib/ocio
++  -D WITH_OPENIMAGEIO=ON
++  -D OPENIMAGEIO_ROOT_DIR=/opt/lib/oiio
++  -D WITH_CYCLES_OSL=ON
++  -D WITH_LLVM=ON
++  -D LLVM_VERSION=6.0
++  -D OSL_ROOT_DIR=/opt/lib/osl
++  -D WITH_OPENSUBDIV=ON
++  -D OPENSUBDIV_ROOT_DIR=/opt/lib/osd
++  -D WITH_OPENVDB=ON
++  -D WITH_OPENVDB_BLOSC=ON
++  -D OPENVDB_ROOT_DIR=/opt/lib/openvdb
++  -D BLOSC_ROOT_DIR=/opt/lib/blosc
++  -D WITH_OPENCOLLADA=ON
++  -D OPENCOLLADA_ROOT_DIR=/opt/lib/opencollada
++  -D WITH_CYCLES_EMBREE=ON
++  -D EMBREE_ROOT_DIR=/opt/lib/embree
++  -D WITH_JACK=ON
++  -D WITH_JACK_DYNLOAD=ON
++  -D WITH_ALEMBIC=ON
++  -D ALEMBIC_ROOT_DIR=/opt/lib/alembic
++  -D WITH_CODEC_FFMPEG=ON
++  -D FFMPEG_LIBRARIES='avformat;avcodec;avutil;avdevice;swscale;swresample;lzma;rt;theora;theoradec;theoraenc;vorbis;vorbisenc;vorbisfile;ogg;xvidcore;vpx;mp3lame;x264;openjp2'
++
++Or even simpler, just run (in your blender-source dir):
++  make -j4 BUILD_CMAKE_ARGS="-U *SNDFILE* -U *PYTHON* -U *BOOST* -U *Boost* -U *OPENCOLORIO* -U *OPENEXR* -U *OPENIMAGEIO* -U *LLVM* -U *CYCLES* -U *OPENSUBDIV* -U *OPENVDB* -U *COLLADA* -U *FFMPEG* -U *ALEMBIC* -D WITH_CODEC_SNDFILE=ON -D PYTHON_VERSION=3.7 -D WITH_OPENCOLORIO=ON -D OPENCOLORIO_ROOT_DIR=/opt/lib/ocio -D WITH_OPENIMAGEIO=ON -D OPENIMAGEIO_ROOT_DIR=/opt/lib/oiio -D WITH_CYCLES_OSL=ON -D WITH_LLVM=ON -D LLVM_VERSION=6.0 -D OSL_ROOT_DIR=/opt/lib/osl -D WITH_OPENSUBDIV=ON -D OPENSUBDIV_ROOT_DIR=/opt/lib/osd -D WITH_OPENVDB=ON -D WITH_OPENVDB_BLOSC=ON -D OPENVDB_ROOT_DIR=/opt/lib/openvdb -D BLOSC_ROOT_DIR=/opt/lib/blosc -D WITH_OPENCOLLADA=ON -D OPENCOLLADA_ROOT_DIR=/opt/lib/opencollada -D WITH_CYCLES_EMBREE=ON -D EMBREE_ROOT_DIR=/opt/lib/embree -D WITH_JACK=ON -D WITH_JACK_DYNLOAD=ON -D WITH_ALEMBIC=ON -D ALEMBIC_ROOT_DIR=/opt/lib/alembic -D WITH_CODEC_FFMPEG=ON -D FFMPEG_LIBRARIES='avformat;avcodec;avutil;avdevice;swscale;swresample;lzma;rt;theora;theoradec;theoraenc;vorbis;vorbisenc;vorbisfile;ogg;xvidcore;vpx;mp3lame;x264;openjp2'"
++
++Or in all your build directories:
++  cmake -U *SNDFILE* -U *PYTHON* -U *BOOST* -U *Boost* -U *OPENCOLORIO* -U *OPENEXR* -U *OPENIMAGEIO* -U *LLVM* -U *CYCLES* -U *OPENSUBDIV* -U *OPENVDB* -U *COLLADA* -U *FFMPEG* -U *ALEMBIC* -D WITH_CODEC_SNDFILE=ON -D PYTHON_VERSION=3.7 -D WITH_OPENCOLORIO=ON -D OPENCOLORIO_ROOT_DIR=/opt/lib/ocio -D WITH_OPENIMAGEIO=ON -D OPENIMAGEIO_ROOT_DIR=/opt/lib/oiio -D WITH_CYCLES_OSL=ON -D WITH_LLVM=ON -D LLVM_VERSION=6.0 -D OSL_ROOT_DIR=/opt/lib/osl -D WITH_OPENSUBDIV=ON -D OPENSUBDIV_ROOT_DIR=/opt/lib/osd -D WITH_OPENVDB=ON -D WITH_OPENVDB_BLOSC=ON -D OPENVDB_ROOT_DIR=/opt/lib/openvdb -D BLOSC_ROOT_DIR=/opt/lib/blosc -D WITH_OPENCOLLADA=ON -D OPENCOLLADA_ROOT_DIR=/opt/lib/opencollada -D WITH_CYCLES_EMBREE=ON -D EMBREE_ROOT_DIR=/opt/lib/embree -D WITH_JACK=ON -D WITH_JACK_DYNLOAD=ON -D WITH_ALEMBIC=ON -D ALEMBIC_ROOT_DIR=/opt/lib/alembic -D WITH_CODEC_FFMPEG=ON -D FFMPEG_LIBRARIES='avformat;avcodec;avutil;avdevice;swscale;swresample;lzma;rt;theora;theoradec;theoraenc;vorbis;vorbisenc;vorbisfile;ogg;xvidcore;vpx;mp3lame;x264;openjp2' .
+diff --git a/intern/cycles/blender/addon/properties.py b/intern/cycles/blender/addon/properties.py
+index 3acdfc391a6..7535b402baf 100644
+--- a/intern/cycles/blender/addon/properties.py
++++ b/intern/cycles/blender/addon/properties.py
+@@ -1087,7 +1087,7 @@ class CyclesObjectSettings(bpy.types.PropertyGroup):
+     use_adaptive_subdivision: BoolProperty(
+         name="Use Adaptive Subdivision",
+         description="Use adaptive render time subdivision",
+-        default=False,
++        default=True,
+     )
+ 
+     dicing_rate: FloatProperty(
+diff --git a/intern/cycles/kernel/shaders/node_principled_bsdf.osl b/intern/cycles/kernel/shaders/node_principled_bsdf.osl
+index 657ced9b6e6..bd8a9454ab4 100644
+--- a/intern/cycles/kernel/shaders/node_principled_bsdf.osl
++++ b/intern/cycles/kernel/shaders/node_principled_bsdf.osl
+@@ -18,7 +18,7 @@
+ #include "node_fresnel.h"
+ 
+ shader node_principled_bsdf(string distribution = "Multiscatter GGX",
+-                            string subsurface_method = "burley",
++                            string subsurface_method = "random_walk",
+                             color BaseColor = color(0.8, 0.8, 0.8),
+                             float Subsurface = 0.0,
+                             vector SubsurfaceRadius = vector(1.0, 1.0, 1.0),
+@@ -26,7 +26,7 @@ shader node_principled_bsdf(string distribution = "Multiscatter GGX",
+                             float Metallic = 0.0,
+                             float Specular = 0.5,
+                             float SpecularTint = 0.0,
+-                            float Roughness = 0.5,
++                            float Roughness = 0.2,
+                             float Anisotropic = 0.0,
+                             float AnisotropicRotation = 0.0,
+                             float Sheen = 0.0,
+diff --git a/release/scripts/startup/bl_ui/space_userpref.py b/release/scripts/startup/bl_ui/space_userpref.py
+index 8ed8eb04898..7e4cc51e429 100644
+--- a/release/scripts/startup/bl_ui/space_userpref.py
++++ b/release/scripts/startup/bl_ui/space_userpref.py
+@@ -190,7 +190,7 @@ class USERPREF_PT_interface_display(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_interface_text(PreferencePanel, Panel):
+     bl_label = "Text Rendering"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -269,7 +269,7 @@ class USERPREF_PT_interface_menus(Panel):
+     bl_space_type = 'PREFERENCES'
+     bl_region_type = 'WINDOW'
+     bl_label = "Menus"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -398,7 +398,7 @@ class USERPREF_PT_edit_cursor(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_edit_gpencil(PreferencePanel, Panel):
+     bl_label = "Grease Pencil"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -435,7 +435,7 @@ class USERPREF_PT_edit_annotations(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_edit_weight_paint(PreferencePanel, Panel):
+     bl_label = "Weight Paint"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -455,7 +455,7 @@ class USERPREF_PT_edit_weight_paint(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_edit_misc(PreferencePanel, Panel):
+     bl_label = "Miscellaneous"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -681,7 +681,7 @@ class USERPREF_PT_viewport_textures(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_viewport_selection(PreferencePanel, Panel):
+     bl_label = "Selection"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -784,7 +784,7 @@ class USERPREF_PT_theme_user_interface(PreferencePanel, Panel):
+     bl_space_type = 'PREFERENCES'
+     bl_region_type = 'WINDOW'
+     bl_label = "User Interface"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -843,7 +843,7 @@ class PreferenceThemeWidgetColorPanel:
+ 
+ class USERPREF_PT_theme_interface_state(PreferencePanel, Panel):
+     bl_label = "State"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+     bl_parent_id = "USERPREF_PT_theme_user_interface"
+ 
+     def draw_props(self, context, layout):
+@@ -878,7 +878,7 @@ class USERPREF_PT_theme_interface_state(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_theme_interface_styles(PreferencePanel, Panel):
+     bl_label = "Styles"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+     bl_parent_id = "USERPREF_PT_theme_user_interface"
+ 
+     def draw_props(self, context, layout):
+@@ -897,7 +897,7 @@ class USERPREF_PT_theme_interface_styles(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_theme_interface_gizmos(PreferencePanel, Panel):
+     bl_label = "Axis & Gizmo Colors"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+     bl_parent_id = "USERPREF_PT_theme_user_interface"
+ 
+     def draw_props(self, context, layout):
+@@ -922,7 +922,7 @@ class USERPREF_PT_theme_interface_gizmos(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_theme_interface_icons(PreferencePanel, Panel):
+     bl_label = "Icon Colors"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+     bl_parent_id = "USERPREF_PT_theme_user_interface"
+ 
+     def draw_props(self, context, layout):
+@@ -942,7 +942,7 @@ class USERPREF_PT_theme_interface_icons(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_theme_text_style(PreferencePanel, Panel):
+     bl_label = "Text Style"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -991,7 +991,7 @@ class USERPREF_PT_theme_text_style(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_theme_bone_color_sets(PreferencePanel, Panel):
+     bl_label = "Bone Color Sets"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -1524,7 +1524,7 @@ class USERPREF_PT_navigation_fly_walk(PreferencePanel, Panel):
+ class USERPREF_PT_navigation_fly_walk_navigation(PreferencePanel, Panel):
+     bl_label = "Walk"
+     bl_parent_id = "USERPREF_PT_navigation_fly_walk"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -1550,7 +1550,7 @@ class USERPREF_PT_navigation_fly_walk_navigation(PreferencePanel, Panel):
+ class USERPREF_PT_navigation_fly_walk_gravity(PreferencePanel, Panel):
+     bl_label = "Gravity"
+     bl_parent_id = "USERPREF_PT_navigation_fly_walk"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -1602,7 +1602,7 @@ class USERPREF_PT_input_tablet(PreferencePanel, Panel):
+ 
+ class USERPREF_PT_input_ndof(PreferencePanel, Panel):
+     bl_label = "NDOF"
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     @classmethod
+     def poll(cls, context):
+@@ -2028,7 +2028,7 @@ class USERPREF_PT_studiolight_light_editor(Panel):
+     bl_parent_id = "USERPREF_PT_studiolight_lights"
+     bl_space_type = 'PREFERENCES'
+     bl_region_type = 'WINDOW'
+-    bl_options = {'DEFAULT_CLOSED'}
++    #bl_options = {'DEFAULT_CLOSED'}
+ 
+     def opengl_light_buttons(self, layout, light):
+ 
+diff --git a/release/scripts/startup/bl_ui/space_view3d.py b/release/scripts/startup/bl_ui/space_view3d.py
+index 7d9f84d69a2..befcd87a7bb 100644
+--- a/release/scripts/startup/bl_ui/space_view3d.py
++++ b/release/scripts/startup/bl_ui/space_view3d.py
+@@ -6568,8 +6568,15 @@ class VIEW3D_PT_sculpt_context_menu(Panel):
+     def draw(self, context):
+         layout = self.layout
+ 
+-        brush = context.tool_settings.sculpt.brush
++        sculpt = context.tool_settings.sculpt
++        brush = sculpt.brush
+         capabilities = brush.sculpt_capabilities
++        if sculpt.detail_type_method in {'CONSTANT', 'MANUAL'}:
++            layout.prop(sculpt, "constant_detail_resolution", slider=True)
++        elif (sculpt.detail_type_method == 'BRUSH'):
++            layout.prop(sculpt, "detail_percent", slider=True)
++        else:
++            layout.prop(sculpt, "detail_size", slider=True)
+ 
+         UnifiedPaintPanel.prop_unified_size(layout, context, brush, "size", slider=True)
+         UnifiedPaintPanel.prop_unified_strength(layout, context, brush, "strength")
+diff --git a/release/scripts/startup/bl_ui/space_view3d_toolbar.py b/release/scripts/startup/bl_ui/space_view3d_toolbar.py
+index 89d771b7026..28ee79c5d39 100644
+--- a/release/scripts/startup/bl_ui/space_view3d_toolbar.py
++++ b/release/scripts/startup/bl_ui/space_view3d_toolbar.py
+@@ -1081,6 +1081,14 @@ class VIEW3D_PT_sculpt_dyntopo(Panel, View3DPaintPanel):
+     def draw_header(self, context):
+         is_popover = self.is_popover
+         layout = self.layout
++        tool_settings = context.tool_settings
++        sculpt = tool_settings.sculpt
++        if sculpt.detail_type_method in {'CONSTANT', 'MANUAL'}:
++            layout.prop(sculpt, "constant_detail_resolution", slider=True)
++        elif (sculpt.detail_type_method == 'BRUSH'):
++            layout.prop(sculpt, "detail_percent", slider=True)
++        else:
++            layout.prop(sculpt, "detail_size", slider=True)
+         layout.operator(
+             "sculpt.dynamic_topology_toggle",
+             icon='CHECKBOX_HLT' if context.sculpt_object.use_dynamic_topology_sculpting else 'CHECKBOX_DEHLT',
+diff --git a/source/blender/blenkernel/intern/curve.c b/source/blender/blenkernel/intern/curve.c
+index 3112e1b5ed1..758ae869e29 100644
+--- a/source/blender/blenkernel/intern/curve.c
++++ b/source/blender/blenkernel/intern/curve.c
+@@ -172,11 +172,13 @@ void BKE_curve_init(Curve *cu)
+ 
+   if (cu->type == OB_FONT) {
+     cu->flag |= CU_FRONT | CU_BACK;
++    cu->spacemode = CU_ALIGN_X_MIDDLE;
++    cu->align_y = CU_ALIGN_Y_CENTER;
+     cu->vfont = cu->vfontb = cu->vfonti = cu->vfontbi = BKE_vfont_builtin_get();
+-    cu->vfont->id.us += 4;
++    cu->vfont->id.us += 6;
+     cu->str = MEM_malloc_arrayN(12, sizeof(unsigned char), "str");
+-    BLI_strncpy(cu->str, "Text", 12);
+-    cu->len = cu->len_wchar = cu->pos = 4;
++    BLI_strncpy(cu->str, "kostex", 12);
++    cu->len = cu->len_wchar = cu->pos = 6;
+     cu->strinfo = MEM_calloc_arrayN(12, sizeof(CharInfo), "strinfo new");
+     cu->totbox = cu->actbox = 1;
+     cu->tb = MEM_calloc_arrayN(MAXTEXTBOX, sizeof(TextBox), "textbox");
+diff --git a/source/blender/editors/curve/editfont.c b/source/blender/editors/curve/editfont.c
+index 781eb2634fb..6a6a6b3aa18 100644
+--- a/source/blender/editors/curve/editfont.c
++++ b/source/blender/editors/curve/editfont.c
+@@ -627,7 +627,7 @@ void FONT_OT_text_paste_from_file(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_TEXT,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+@@ -2150,7 +2150,7 @@ void FONT_OT_open(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_FTFONT,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/editors/interface/interface_layout.c b/source/blender/editors/interface/interface_layout.c
+index 529cb0712df..9877e6ec9ab 100644
+--- a/source/blender/editors/interface/interface_layout.c
++++ b/source/blender/editors/interface/interface_layout.c
+@@ -73,7 +73,7 @@
+   } \
+   (void)0
+ 
+-#define UI_ITEM_PROP_SEP_DIVIDE 0.5f
++#define UI_ITEM_PROP_SEP_DIVIDE 0.3f
+ 
+ /* uiLayoutRoot */
+ 
+diff --git a/source/blender/editors/interface/interface_widgets.c b/source/blender/editors/interface/interface_widgets.c
+index 8d22c5b85bb..e10cbf69ab0 100644
+--- a/source/blender/editors/interface/interface_widgets.c
++++ b/source/blender/editors/interface/interface_widgets.c
+@@ -2136,9 +2136,9 @@ static void widget_draw_text(const uiFontStyle *fstyle,
+           immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+       immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+ 
+-      immUniformColor3f(0.2f, 0.6f, 0.9f);
++      immUniformColor3f(1.0f, 0.0f, 0.0f);
+ 
+-      tx = rect->xmin + t + 2;
++      tx = rect->xmin + t + (2.0f * UI_DPI_FAC);
+       ty = rect->ymin + 2;
+ 
+       /* draw cursor */
+diff --git a/source/blender/editors/io/io_alembic.c b/source/blender/editors/io/io_alembic.c
+index 2f3e73f32d5..b400e9de01a 100644
+--- a/source/blender/editors/io/io_alembic.c
++++ b/source/blender/editors/io/io_alembic.c
+@@ -316,7 +316,7 @@ void WM_OT_alembic_export(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_ALEMBIC,
+                                  FILE_BLENDER,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ 
+@@ -691,7 +691,7 @@ void WM_OT_alembic_import(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_ALEMBIC,
+                                  FILE_BLENDER,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ 
+diff --git a/source/blender/editors/io/io_cache.c b/source/blender/editors/io/io_cache.c
+index ff2bc72c2f7..8067172321c 100644
+--- a/source/blender/editors/io/io_cache.c
++++ b/source/blender/editors/io/io_cache.c
+@@ -132,7 +132,7 @@ void CACHEFILE_OT_open(wmOperatorType *ot)
+                                  FILE_TYPE_ALEMBIC | FILE_TYPE_FOLDER,
+                                  FILE_BLENDER,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/editors/io/io_collada.c b/source/blender/editors/io/io_collada.c
+index dad84c87fd7..3f51504d6ac 100644
+--- a/source/blender/editors/io/io_collada.c
++++ b/source/blender/editors/io/io_collada.c
+@@ -541,7 +541,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_COLLADA,
+                                  FILE_BLENDER,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ 
+@@ -870,7 +870,7 @@ void WM_OT_collada_import(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_COLLADA,
+                                  FILE_BLENDER,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ 
+diff --git a/source/blender/editors/object/object_modifier.c b/source/blender/editors/object/object_modifier.c
+index 88d01936882..6800959e4ea 100644
+--- a/source/blender/editors/object/object_modifier.c
++++ b/source/blender/editors/object/object_modifier.c
+@@ -1541,7 +1541,7 @@ void OBJECT_OT_multires_external_save(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_BTX,
+                                  FILE_SPECIAL,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   edit_modifier_properties(ot);
+diff --git a/source/blender/editors/screen/screen_ops.c b/source/blender/editors/screen/screen_ops.c
+index 50e5597ac0c..369831daa88 100644
+--- a/source/blender/editors/screen/screen_ops.c
++++ b/source/blender/editors/screen/screen_ops.c
+@@ -4829,8 +4829,8 @@ static void SCREEN_OT_back_to_previous(struct wmOperatorType *ot)
+ 
+ static int userpref_show_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+ {
+-  int sizex = (500 + UI_NAVIGATION_REGION_WIDTH) * UI_DPI_FAC;
+-  int sizey = 520 * UI_DPI_FAC;
++  int sizex = (1200 + UI_NAVIGATION_REGION_WIDTH) * UI_DPI_FAC;
++  int sizey = 900 * UI_DPI_FAC;
+ 
+   /* changes context! */
+   if (WM_window_open_temp(C, event->x, event->y, sizex, sizey, WM_WINDOW_USERPREFS) != NULL) {
+diff --git a/source/blender/editors/screen/screendump.c b/source/blender/editors/screen/screendump.c
+index 005c76d26b0..51144e36b72 100644
+--- a/source/blender/editors/screen/screendump.c
++++ b/source/blender/editors/screen/screendump.c
+@@ -246,7 +246,7 @@ void SCREEN_OT_screenshot(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE,
+                                  FILE_SPECIAL,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   RNA_def_boolean(ot->srna,
+diff --git a/source/blender/editors/sound/sound_ops.c b/source/blender/editors/sound/sound_ops.c
+index 4e710d31cbb..b683be337fe 100644
+--- a/source/blender/editors/sound/sound_ops.c
++++ b/source/blender/editors/sound/sound_ops.c
+@@ -168,7 +168,7 @@ static void SOUND_OT_open(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_SOUND | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   RNA_def_boolean(ot->srna, "cache", false, "Cache", "Cache the sound in memory");
+@@ -195,7 +195,7 @@ static void SOUND_OT_open_mono(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_SOUND | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   RNA_def_boolean(ot->srna, "cache", false, "Cache", "Cache the sound in memory");
+diff --git a/source/blender/editors/space_buttons/buttons_ops.c b/source/blender/editors/space_buttons/buttons_ops.c
+index 3ea6d183969..39a09acbc5e 100644
+--- a/source/blender/editors/space_buttons/buttons_ops.c
++++ b/source/blender/editors/space_buttons/buttons_ops.c
+@@ -262,7 +262,7 @@ void BUTTONS_OT_file_browse(wmOperatorType *ot)
+                                  0,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+@@ -289,7 +289,7 @@ void BUTTONS_OT_directory_browse(wmOperatorType *ot)
+                                  0,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/editors/space_clip/clip_ops.c b/source/blender/editors/space_clip/clip_ops.c
+index cf899773822..3645c990050 100644
+--- a/source/blender/editors/space_clip/clip_ops.c
++++ b/source/blender/editors/space_clip/clip_ops.c
+@@ -321,7 +321,7 @@ void CLIP_OT_open(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_RELPATH | WM_FILESEL_FILES | WM_FILESEL_DIRECTORY,
++                                 WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS | WM_FILESEL_FILES | WM_FILESEL_DIRECTORY,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/editors/space_file/filesel.c b/source/blender/editors/space_file/filesel.c
+index d683c9d5c98..df0579ae1a9 100644
+--- a/source/blender/editors/space_file/filesel.c
++++ b/source/blender/editors/space_file/filesel.c
+@@ -281,7 +281,7 @@ short ED_fileselect_set_params(SpaceFile *sfile)
+     if (params->display == FILE_DEFAULTDISPLAY) {
+       if (params->display_previous == FILE_DEFAULTDISPLAY) {
+         if (U.uiflag & USER_SHOW_THUMBNAILS) {
+-          if (params->filter & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT)) {
++          if (params->filter & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_BLENDER)) {
+             params->display = FILE_IMGDISPLAY;
+           }
+           else {
+diff --git a/source/blender/editors/space_image/image_ops.c b/source/blender/editors/space_image/image_ops.c
+index e338a450db6..f4507f93722 100644
+--- a/source/blender/editors/space_image/image_ops.c
++++ b/source/blender/editors/space_image/image_ops.c
+@@ -1513,7 +1513,7 @@ void IMAGE_OT_open(wmOperatorType *ot)
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILES |
+-                                     WM_FILESEL_RELPATH,
++                                     WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ 
+@@ -1651,7 +1651,7 @@ void IMAGE_OT_replace(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+@@ -2021,7 +2021,7 @@ void IMAGE_OT_save_as(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/editors/space_info/info_ops.c b/source/blender/editors/space_info/info_ops.c
+index 14817e9ffa1..da09799fa23 100644
+--- a/source/blender/editors/space_info/info_ops.c
++++ b/source/blender/editors/space_info/info_ops.c
+@@ -513,7 +513,7 @@ void FILE_OT_find_missing_files(wmOperatorType *ot)
+                                  0,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_DIRECTORY,
++                                 WM_FILESEL_DIRECTORY | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/editors/space_node/node_add.c b/source/blender/editors/space_node/node_add.c
+index 01a30f677a3..071793f9ea9 100644
+--- a/source/blender/editors/space_node/node_add.c
++++ b/source/blender/editors/space_node/node_add.c
+@@ -406,7 +406,7 @@ void NODE_OT_add_file(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   RNA_def_string(ot->srna, "name", "Image", MAX_ID_NAME - 2, "Name", "Data-block name to assign");
+diff --git a/source/blender/editors/space_node/node_templates.c b/source/blender/editors/space_node/node_templates.c
+index 423dec13c69..64bc9de8e53 100644
+--- a/source/blender/editors/space_node/node_templates.c
++++ b/source/blender/editors/space_node/node_templates.c
+@@ -48,6 +48,8 @@
+ 
+ #include "ED_undo.h"
+ 
++#define KTX_WIDTH 0.25f
++
+ /************************* Node Socket Manipulation **************************/
+ 
+ /* describes an instance of a node type and a specific socket to link */
+@@ -715,7 +717,7 @@ static void ui_node_draw_node(
+ 
+   if (node->typeinfo->draw_buttons) {
+     if (node->type != NODE_GROUP) {
+-      split = uiLayoutSplit(layout, 0.5f, false);
++      split = uiLayoutSplit(layout, KTX_WIDTH, false);
+       col = uiLayoutColumn(split, false);
+       col = uiLayoutColumn(split, false);
+ 
+@@ -765,7 +767,7 @@ static void ui_node_draw_input(
+   BLI_snprintf(label + indent, UI_MAX_NAME_STR - indent, "%s", IFACE_(input->name));
+ 
+   /* split in label and value */
+-  split = uiLayoutSplit(layout, 0.5f, false);
++  split = uiLayoutSplit(layout, KTX_WIDTH, false);
+ 
+   row = uiLayoutRow(split, true);
+ 
+diff --git a/source/blender/editors/space_sequencer/sequencer_add.c b/source/blender/editors/space_sequencer/sequencer_add.c
+index b24f8e8d00f..8d60773829c 100644
+--- a/source/blender/editors/space_sequencer/sequencer_add.c
++++ b/source/blender/editors/space_sequencer/sequencer_add.c
+@@ -759,7 +759,7 @@ void SEQUENCER_OT_movie_strip_add(struct wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_FILES,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS | WM_FILESEL_FILES,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   sequencer_generic_props__internal(ot, SEQPROP_STARTFRAME);
+@@ -818,7 +818,7 @@ void SEQUENCER_OT_sound_strip_add(struct wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_SOUND,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_FILES,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS | WM_FILESEL_FILES,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   sequencer_generic_props__internal(ot, SEQPROP_STARTFRAME);
+@@ -1021,7 +1021,7 @@ void SEQUENCER_OT_image_strip_add(struct wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH | WM_FILESEL_FILES,
++                                 WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS | WM_FILESEL_FILES,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+   sequencer_generic_props__internal(ot, SEQPROP_STARTFRAME | SEQPROP_ENDFRAME);
+diff --git a/source/blender/editors/space_text/text_ops.c b/source/blender/editors/space_text/text_ops.c
+index caefb5070fb..b7aa29423ed 100644
+--- a/source/blender/editors/space_text/text_ops.c
++++ b/source/blender/editors/space_text/text_ops.c
+@@ -403,7 +403,7 @@ void TEXT_OT_open(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_TEXT | FILE_TYPE_PYSCRIPT,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);  // XXX TODO, relative_path
+   RNA_def_boolean(
+@@ -723,7 +723,7 @@ void TEXT_OT_save_as(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_TEXT | FILE_TYPE_PYSCRIPT,
+                                  FILE_SPECIAL,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);  // XXX TODO, relative_path
+ }
+diff --git a/source/blender/editors/space_topbar/space_topbar.c b/source/blender/editors/space_topbar/space_topbar.c
+index 725a49e417e..811730e1757 100644
+--- a/source/blender/editors/space_topbar/space_topbar.c
++++ b/source/blender/editors/space_topbar/space_topbar.c
+@@ -219,10 +219,19 @@ static void recent_files_menu_draw(const bContext *UNUSED(C), Menu *menu)
+       const char *file = BLI_path_basename(recent->filepath);
+       const int icon = BLO_has_bfile_extension(file) ? ICON_FILE_BLEND : ICON_FILE_BACKUP;
+       PointerRNA ptr;
+-      uiItemFullO(layout, "WM_OT_open_mainfile", file, icon, NULL, WM_OP_INVOKE_DEFAULT, 0, &ptr);
++      if (!BLI_exists(recent->filepath)){
++        char file_na[MAX_NAME];
++        strcpy(file_na, file);
++        strcat(file_na, " (N/A)");
++        uiItemFullO(layout, "WM_OT_open_mainfile", file_na, icon, NULL, WM_OP_INVOKE_DEFAULT, 0, &ptr);
++      }
++      else {
++        uiItemFullO(layout, "WM_OT_open_mainfile", file, icon, NULL, WM_OP_INVOKE_DEFAULT, 0, &ptr);
++      }
+       RNA_string_set(&ptr, "filepath", recent->filepath);
+       RNA_boolean_set(&ptr, "display_file_selector", false);
+     }
++    uiItemFullO(layout, "WM_OT_recent_cleanup", "Cleanup Recent", ICON_INFO, NULL, WM_OP_INVOKE_DEFAULT, 0, NULL);
+   }
+   else {
+     uiItemL(layout, IFACE_("No Recent Files"), ICON_NONE);
+diff --git a/source/blender/editors/space_view3d/view3d_edit.c b/source/blender/editors/space_view3d/view3d_edit.c
+index e76ef2b0458..eb7025b789c 100644
+--- a/source/blender/editors/space_view3d/view3d_edit.c
++++ b/source/blender/editors/space_view3d/view3d_edit.c
+@@ -4696,7 +4696,7 @@ void VIEW3D_OT_background_image_add(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE,
+                                  FILE_SPECIAL,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/makesrna/intern/rna_curve.c b/source/blender/makesrna/intern/rna_curve.c
+index a7dac4100db..b539bc65398 100644
+--- a/source/blender/makesrna/intern/rna_curve.c
++++ b/source/blender/makesrna/intern/rna_curve.c
+@@ -1108,6 +1108,7 @@ static void rna_def_font(BlenderRNA *UNUSED(brna), StructRNA *srna)
+   RNA_def_property_enum_items(prop, prop_align_items);
+   RNA_def_property_ui_text(
+       prop, "Text Horizontal Align", "Text horizontal align from the object center");
++  RNA_def_property_enum_default(prop, CU_ALIGN_X_MIDDLE);
+   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
+ 
+   prop = RNA_def_property(srna, "align_y", PROP_ENUM, PROP_NONE);
+@@ -1115,6 +1116,7 @@ static void rna_def_font(BlenderRNA *UNUSED(brna), StructRNA *srna)
+   RNA_def_property_enum_items(prop, prop_align_y_items);
+   RNA_def_property_ui_text(
+       prop, "Text Vertical Align", "Text vertical align from the object center");
++  RNA_def_property_enum_default(prop, CU_ALIGN_Y_CENTER);
+   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
+ 
+   prop = RNA_def_property(srna, "overflow", PROP_ENUM, PROP_NONE);
+diff --git a/source/blender/nodes/shader/nodes/node_shader_bsdf_principled.c b/source/blender/nodes/shader/nodes/node_shader_bsdf_principled.c
+index 595ddf27d0a..5105bcd30c8 100644
+--- a/source/blender/nodes/shader/nodes/node_shader_bsdf_principled.c
++++ b/source/blender/nodes/shader/nodes/node_shader_bsdf_principled.c
+@@ -39,7 +39,7 @@ static bNodeSocketTemplate sh_node_bsdf_principled_in[] = {
+     {SOCK_FLOAT, 1, N_("Metallic"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
+     {SOCK_FLOAT, 1, N_("Specular"), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
+     {SOCK_FLOAT, 1, N_("Specular Tint"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
+-    {SOCK_FLOAT, 1, N_("Roughness"), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
++    {SOCK_FLOAT, 1, N_("Roughness"), 0.2f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
+     {SOCK_FLOAT, 1, N_("Anisotropic"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
+     {SOCK_FLOAT, 1, N_("Anisotropic Rotation"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
+     {SOCK_FLOAT, 1, N_("Sheen"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
+@@ -95,7 +95,7 @@ static bNodeSocketTemplate sh_node_bsdf_principled_out[] = {
+ static void node_shader_init_principled(bNodeTree *UNUSED(ntree), bNode *node)
+ {
+   node->custom1 = SHD_GLOSSY_GGX;
+-  node->custom2 = SHD_SUBSURFACE_BURLEY;
++  node->custom2 = SHD_SUBSURFACE_RANDOM_WALK;
+ }
+ 
+ #define socket_not_zero(sock) (in[sock].link || (clamp_f(in[sock].vec[0], 0.0f, 1.0f) > 1e-5f))
+diff --git a/source/blender/windowmanager/intern/wm_event_system.c b/source/blender/windowmanager/intern/wm_event_system.c
+index 7192b25a7d5..80ea32766d0 100644
+--- a/source/blender/windowmanager/intern/wm_event_system.c
++++ b/source/blender/windowmanager/intern/wm_event_system.c
+@@ -2340,8 +2340,8 @@ static int wm_handler_fileselect_do(bContext *C,
+   switch (val) {
+     case EVT_FILESELECT_FULL_OPEN: {
+       wmWindow *win = CTX_wm_window(C);
+-      const int sizex = 1020 * UI_DPI_FAC;
+-      const int sizey = 600 * UI_DPI_FAC;
++      const int sizex = WM_window_pixels_x(win) - 100;
++      const int sizey = WM_window_pixels_y(win) - 150;
+ 
+       if (WM_window_open_temp(C,
+                               WM_window_pixels_x(win) / 2,
+diff --git a/source/blender/windowmanager/intern/wm_files.c b/source/blender/windowmanager/intern/wm_files.c
+index c7f38a7f53b..66c5af9ab63 100644
+--- a/source/blender/windowmanager/intern/wm_files.c
++++ b/source/blender/windowmanager/intern/wm_files.c
+@@ -696,9 +696,8 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
+     BKE_reportf(reports, RPT_ERROR, "Unknown error loading '%s'", filepath);
+     BLI_assert(!"invalid 'retval'");
+   }
+-
++/* don't remove from recent files list anymore.. use the cleanup function
+   if (success == false) {
+-    /* remove from recent files list */
+     if (do_history) {
+       RecentFile *recent = wm_file_history_find(filepath);
+       if (recent) {
+@@ -707,7 +706,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
+       }
+     }
+   }
+-
++*/
+   WM_cursor_wait(0);
+ 
+   return success;
+@@ -2349,9 +2348,9 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_BLENDER,
+                                  FILE_BLENDER,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+-                                 FILE_SORT_ALPHA);
++                                 FILE_SORT_TIME);
+ 
+   RNA_def_boolean(
+       ot->srna, "load_ui", true, "Load UI", "Load user interface setup in the .blend file");
+@@ -2516,7 +2515,7 @@ void WM_OT_recover_auto_save(wmOperatorType *ot)
+                                  FILE_TYPE_BLENDER,
+                                  FILE_BLENDER,
+                                  FILE_OPENFILE,
+-                                 WM_FILESEL_FILEPATH,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_HORIZONTALDISPLAY,
+                                  FILE_SORT_TIME);
+ }
+@@ -2664,13 +2663,13 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_BLENDER,
+                                  FILE_BLENDER,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
+-                                 FILE_DEFAULTDISPLAY,
+-                                 FILE_SORT_ALPHA);
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
++                                 FILE_HORIZONTALDISPLAY,
++                                 FILE_SORT_TIME);
+   RNA_def_boolean(ot->srna, "compress", false, "Compress", "Write compressed .blend file");
+   RNA_def_boolean(ot->srna,
+                   "relative_remap",
+-                  true,
++                  USER_RELPATHS,
+                   "Remap Relative",
+                   "Make paths relative when saving to a different directory");
+   prop = RNA_def_boolean(
+@@ -2736,8 +2735,8 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
+                                  FILE_TYPE_FOLDER | FILE_TYPE_BLENDER,
+                                  FILE_BLENDER,
+                                  FILE_SAVE,
+-                                 WM_FILESEL_FILEPATH,
+-                                 FILE_DEFAULTDISPLAY,
++                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
++                                 FILE_HORIZONTALDISPLAY,
+                                  FILE_SORT_ALPHA);
+   RNA_def_boolean(ot->srna, "compress", false, "Compress", "Write compressed .blend file");
+   RNA_def_boolean(ot->srna,
+@@ -3201,4 +3200,4 @@ bool wm_file_or_image_is_modified(const bContext *C)
+   return !wm->file_saved || ED_image_should_save_modified(C);
+ }
+ 
+-/** \} */
++/** \} */
+\ No newline at end of file
+diff --git a/source/blender/windowmanager/intern/wm_files_link.c b/source/blender/windowmanager/intern/wm_files_link.c
+index 2cd2cf0636a..f8671040800 100644
+--- a/source/blender/windowmanager/intern/wm_files_link.c
++++ b/source/blender/windowmanager/intern/wm_files_link.c
+@@ -576,7 +576,7 @@ void WM_OT_link(wmOperatorType *ot)
+                                  FILE_LOADLIB,
+                                  FILE_OPENFILE,
+                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+-                                     WM_FILESEL_RELPATH | WM_FILESEL_FILES,
++                                     WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS | WM_FILESEL_FILES,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ 
+@@ -600,7 +600,7 @@ void WM_OT_append(wmOperatorType *ot)
+                                  FILE_LOADLIB,
+                                  FILE_OPENFILE,
+                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+-                                     WM_FILESEL_FILES,
++                                     WM_FILESEL_FILES | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ 
+@@ -1077,7 +1077,7 @@ void WM_OT_lib_relocate(wmOperatorType *ot)
+                                  FILE_BLENDER,
+                                  FILE_OPENFILE,
+                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+-                                     WM_FILESEL_FILES | WM_FILESEL_RELPATH,
++                                     WM_FILESEL_FILES | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+@@ -1107,7 +1107,7 @@ void WM_OT_lib_reload(wmOperatorType *ot)
+                                  FILE_BLENDER,
+                                  FILE_OPENFILE,
+                                  WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILENAME |
+-                                     WM_FILESEL_RELPATH,
++                                     WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
+                                  FILE_DEFAULTDISPLAY,
+                                  FILE_SORT_ALPHA);
+ }
+diff --git a/source/blender/windowmanager/intern/wm_operators.c b/source/blender/windowmanager/intern/wm_operators.c
+index 9657347a1c4..48138a9d2f6 100644
+--- a/source/blender/windowmanager/intern/wm_operators.c
++++ b/source/blender/windowmanager/intern/wm_operators.c
+@@ -57,6 +57,7 @@
+ #include "BLI_math.h"
+ #include "BLI_utildefines.h"
+ 
++#include "BKE_appdir.h"
+ #include "BKE_brush.h"
+ #include "BKE_context.h"
+ #include "BKE_global.h"
+@@ -1767,11 +1768,45 @@ static void WM_OT_quit_blender(wmOperatorType *ot)
+   ot->exec = wm_exit_blender_exec;
+ }
+ 
+-/** \} */
++static int wm_recent_cleanup_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
++{
++  const char *user_config_dir;
++  char name[FILE_MAX];
++  FILE *fp;
+ 
+-/* -------------------------------------------------------------------- */
+-/** \name Console Toggle Operator (WIN32 only)
+- * \{ */
++  /* will be NULL in background mode */
++  user_config_dir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, NULL);
++  if (!user_config_dir) {
++    return OPERATOR_CANCELLED;
++  }
++  BLI_make_file_string("/", name, user_config_dir, BLENDER_HISTORY_FILE);
++  fp = BLI_fopen(name, "w");
++  if (fp) {
++    struct RecentFile *recent;
++    for (recent = G.recent_files.first; recent; recent = recent->next) {
++      if(BLI_exists(recent->filepath)){
++        fprintf(fp, "%s\n", recent->filepath);
++      }
++      else {
++        MEM_freeN(recent->filepath);
++        BLI_freelinkN(&G.recent_files, recent);
++      }
++    }
++    fclose(fp);
++  }
++  return OPERATOR_FINISHED;
++}
++
++static void WM_OT_recent_cleanup(wmOperatorType *ot)
++{
++  ot->name = "Cleanup Recent Files";
++  ot->idname = "WM_OT_recent_cleanup";
++  ot->description = "Remove all invalid Recent Files";
++
++  ot->exec = wm_recent_cleanup_exec;
++}
++
++/* *********************** */
+ 
+ #if defined(WIN32)
+ 
+@@ -3366,6 +3401,7 @@ void wm_operatortypes_register(void)
+   WM_operatortype_append(WM_OT_call_panel);
+   WM_operatortype_append(WM_OT_radial_control);
+   WM_operatortype_append(WM_OT_stereo3d_set);
++  WM_operatortype_append(WM_OT_recent_cleanup);
+ #if defined(WIN32)
+   WM_operatortype_append(WM_OT_console_toggle);
+ #endif
