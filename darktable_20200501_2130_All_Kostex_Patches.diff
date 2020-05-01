@@ -1,0 +1,89 @@
+diff --git a/data/darktableconfig.xml.in b/data/darktableconfig.xml.in
+index fbd150f45..5fa226c5f 100644
+--- a/data/darktableconfig.xml.in
++++ b/data/darktableconfig.xml.in
+@@ -1,6 +1,13 @@
+ <?xml version="1.0"?>
+ <!DOCTYPE dtconfiglist SYSTEM "darktableconfig.dtd">
+ <dtconfiglist>
++  <dtconfig prefs="misc" section="other">
++    <name>ktx/delete_off_modules</name>
++    <type>bool</type>
++    <default>false</default>
++    <shortdescription>delete 'off' modules</shortdescription>
++    <longdescription>when compressing history delete 'off' modules as well</longdescription>
++  </dtconfig>
+   <dtconfig>
+     <name>bauhaus/scale</name>
+     <type>float</type>
+diff --git a/src/common/file_location.c b/src/common/file_location.c
+index 5c5992c79..9394d007e 100644
+--- a/src/common/file_location.c
++++ b/src/common/file_location.c
+@@ -92,7 +92,7 @@ gchar *dt_loc_init_generic(const char *value, const char *default_value)
+ 
+ void dt_loc_init_user_config_dir(const char *configdir)
+ {
+-  char *default_config_dir = g_build_filename(g_get_user_config_dir(), "darktable", NULL);
++  char *default_config_dir = g_build_filename(g_get_user_config_dir(), "darktable_3", NULL);
+   darktable.configdir = dt_loc_init_generic(configdir, default_config_dir);
+   g_free(default_config_dir);
+ }
+diff --git a/src/common/history.c b/src/common/history.c
+index 874208b07..cd59f15be 100644
+--- a/src/common/history.c
++++ b/src/common/history.c
+@@ -982,6 +982,28 @@ void dt_history_compress_on_image(int32_t imgid)
+   sqlite3_step(stmt);
+   sqlite3_finalize(stmt);
+ 
++  if(dt_conf_get_bool("ktx/delete_off_modules"))
++  {
++    // remove disabled modules
++    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "DELETE FROM main.history WHERE imgid = ?1 AND "
++                                                               "enabled = 0", -1, &stmt, NULL);
++    DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++    sqlite3_step(stmt);
++    sqlite3_finalize(stmt);
++  }
++
++  // do we already have a mask manager at the correct position? We don't want to increase history nums later
++
++  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
++                              "SELECT num FROM main.history WHERE imgid = ?1 AND operation = ?2", -1, &stmt, NULL);
++  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
++  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 2, op_mask_manager, -1, SQLITE_TRANSIENT);
++  if(sqlite3_step(stmt) == SQLITE_ROW)
++    {
++      if (sqlite3_column_int(stmt, 0) == 0) manager_position = TRUE;
++    }
++  sqlite3_finalize(stmt);
++
+   // delete all mask_manager entries
+   DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+     "DELETE FROM main.history WHERE imgid = ?1 AND operation = ?2", -1, &stmt, NULL);
+diff --git a/src/common/mipmap_cache.c b/src/common/mipmap_cache.c
+index 6f95ec888..d0a48c013 100644
+--- a/src/common/mipmap_cache.c
++++ b/src/common/mipmap_cache.c
+@@ -119,11 +119,17 @@ static inline void dead_image_8(dt_mipmap_buffer_t *buf)
+   dsc->iscale = 1.0f;
+   dsc->color_space = DT_COLORSPACE_DISPLAY;
+   assert(dsc->size > 64 * sizeof(uint32_t));
+-  const uint32_t X = 0xffffffffu;
++  const uint32_t X = 0x33000040u;
+   const uint32_t o = 0u;
+   const uint32_t image[]
+-      = { o, o, o, o, o, o, o, o, o, o, X, X, X, X, o, o, o, X, o, X, X, o, X, o, o, X, X, X, X, X, X, o,
+-          o, o, X, o, o, X, o, o, o, o, o, o, o, o, o, o, o, o, X, X, X, X, o, o, o, o, o, o, o, o, o, o };
++      = { o, o, o, o, o, o, o, o,
++          o, X, o, o, o, o, X, o,
++          o, o, X, o, o, X, o, o,
++          o, o, o, X, X, o, o, o,
++          o, o, o, X, X, o, o, o,
++          o, o, X, o, o, X, o, o,
++          o, X, o, o, o, o, X, o,
++          o, o, o, o, o, o, o, o };
+   memcpy(buf->buf, image, sizeof(uint32_t) * 64);
+ }
+ 
